@@ -2,9 +2,7 @@
 
 import random
 import string
-import tempfile
-import os
-
+from subprocess import Popen, PIPE
 
 def rand_string(size):
     good_chars = string.ascii_lowercase + string.ascii_uppercase + string.digits
@@ -15,24 +13,29 @@ def rand_spaces(size):
     return ''.join(random.choices(population=string.whitespace, k=size)).encode('utf-8')
 
 
-def gen_file(words_cnt, front_spaces, back_spaces):
-    file = tempfile.NamedTemporaryFile()
+def gen_input(stream, words_cnt, front_spaces, back_spaces):
     if front_spaces:
-        file.write(rand_spaces(random.randint(1, 10)))
+        stream.write(rand_spaces(random.randint(1, 10)))
     if words_cnt >= 1:
-        file.write(rand_string(random.randint(1, 50)))
+        stream.write(rand_string(random.randint(1, 50)))
         for _ in range(words_cnt - 1):
-            file.write(rand_spaces(random.randint(1, 50)))
-            file.write(rand_string(random.randint(1, 50)))
+            stream.write(rand_spaces(random.randint(1, 50)))
+            stream.write(rand_string(random.randint(1, 50)))
     if back_spaces:
-        file.write(rand_spaces(random.randint(1, 10)))
-    file.flush()
-    return file
+        stream.write(rand_spaces(random.randint(1, 10)))
 
 
 def test(words_cnt, front_spaces, back_spaces):
-    with gen_file(words_cnt, front_spaces, back_spaces) as file:
-        real = os.popen(f'cat {file.name} | ./wordcount').read()
+    with Popen('./wordcount', shell=True, bufsize=-1,
+               stdin=PIPE, stdout=PIPE, close_fds=True) as process:
+        gen_input(process.stdin, words_cnt, front_spaces, back_spaces)
+
+        process.stdin.close()
+        if process.wait() != 0:
+            print('Return code is not 0!')
+            exit(1)
+
+        real = process.stdout.read()
         if words_cnt != int(real):
             print(f'Expected {words_cnt} words, but counted {real}')
             exit(1)
