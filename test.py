@@ -13,7 +13,7 @@ def rand_spaces(size):
     return ''.join(random.choices(population=string.whitespace, k=size)).encode('utf-8')
 
 
-def gen_input(stream, words_cnt, front_spaces, back_spaces):
+def gen_input(stream, words_cnt, word_length, front_spaces, back_spaces):
     if front_spaces:
         stream.write(rand_spaces(random.randint(1, 10)))
     if words_cnt >= int(1e5):
@@ -26,41 +26,50 @@ def gen_input(stream, words_cnt, front_spaces, back_spaces):
             stream.write(rand_spaces(random.randint(1, 50)))
             stream.write(rand_string(random.randint(1, 50)))
     elif words_cnt >= 1:
-        stream.write(rand_string(random.randint(1, 50)))
+        length = lambda: random.randint(1, 50) if word_length == -1 else word_length
+        stream.write(rand_string(length()))
         for _ in range(words_cnt - 1):
             stream.write(rand_spaces(random.randint(1, 50)))
-            stream.write(rand_string(random.randint(1, 50)))
+            stream.write(rand_string(length()))
     if back_spaces:
         stream.write(rand_spaces(random.randint(1, 10)))
 
 
-def test(words_cnt, front_spaces, back_spaces):
-    with Popen('./wordcount', shell=True, stdin=PIPE, stdout=PIPE, close_fds=True) as process:
-        gen_input(process.stdin, words_cnt, front_spaces, back_spaces)
+def test(words_cnt, word_length):
+    bool_range = [False, True]
+    for front_spaces in bool_range:
+        for back_spaces in bool_range:
+            with Popen('./wordcount', shell=True, stdin=PIPE, stdout=PIPE, close_fds=True) as process:
+                gen_input(process.stdin, words_cnt, word_length, front_spaces, back_spaces)
 
-        process.stdin.close()
-        if process.wait() != 0:
-            print('Return code is not 0!')
-            exit(1)
+                process.stdin.close()
+                if process.wait() != 0:
+                    print('Return code is not 0!')
+                    exit(1)
 
-        real = process.stdout.read()
-        if words_cnt != int(real):
-            print(f'Expected {words_cnt} words, but counted {real}')
-            exit(1)
+                real = process.stdout.read()
+                if words_cnt != int(real):
+                    print(f'Expected {words_cnt} words, but counted {real}')
+                    exit(1)
 
 
-def test_all_spaces(words_cnt):
-    test(words_cnt, False, False)
-    test(words_cnt, True, False)
-    test(words_cnt, False, True)
-    test(words_cnt, True, True)
+def test_many(words_cnt):
+    test(words_cnt, -1)
+
+
+def test_single(word_length):
+    test(1, word_length)
 
 
 random.seed(2517)
-test_all_spaces(0)
+test_many(0)
+for length in [2 ** 8, 2 ** 12, 2 ** 16]:
+    test_single(length - 1)
+    test_single(length)
+    test_single(length + 1)
 for _ in range(100):
     cnt = random.randint(100, 5000)
-    test_all_spaces(cnt)
+    test_many(cnt)
 for huge in map(int, [1e6, 1e7, 1e8, 1e9]):
-    test_all_spaces(huge + 13)
-test_all_spaces(2 ** 32 + 42)
+    test_many(huge + 13)
+test_many(2 ** 32 + 42)
