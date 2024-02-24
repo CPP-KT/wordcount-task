@@ -5,13 +5,27 @@ on:
 
 jobs:
   test:
-    name: Tests 
-    runs-on: ubuntu-20.04
+    name: Tests
+    runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v1
-    - name: dependencies
-      run: sudo apt update && sudo apt install binutils nasm python3 
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+          fetch-depth: 0
+
+    - name: Install dependencies
+      run: sudo apt update && sudo apt install binutils nasm python3 dos2unix
+
+    - name: Check line spaces
+      run: |
+        pushd $GITHUB_WORKSPACE
+        ci-extra/check-lines.sh
+        popd
+
+    - name: Check formatting
+      run: |
+        ci-extra/check-asm-formatting.py
 
     - name: Build
       run: nasm -felf64 wordcount.asm && ld wordcount.o -o wordcount
