@@ -6,16 +6,13 @@ on:
 jobs:
   test:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ubuntu]
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
           fetch-depth: 0
-
-    - name: Install dependencies
-      run: sudo apt update && sudo apt install binutils nasm python3 dos2unix
 
     - name: Check line spaces
       run: |
